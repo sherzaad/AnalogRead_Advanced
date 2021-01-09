@@ -36,23 +36,25 @@
 class AnalogReadEx
 {
   public:
-	static volatile uint16_t adc_intr_rd;
+	static volatile uint16_t adcIntr_val;
+	static uint8_t *adc; //not need for 'volatile' as only used by ISR
 	
     void SetReference(uint8_t mode); // Arduino provides DEFAULT, INTERNAL, INTERNAL1V1, INTERNAL2V56 and EXTERNAL. 
 	void SetPrescaler(uint8_t prescaler); //see prescaler defines
 	void PinSelect(uint8_t pin); //Single ended ADC
-	void ReadStart(); //start ADC
-	void DiffPinSelect(uint8_t pos,uint8_t neg, uint8_t gain = X1); //Differential ADC
-	int16_t ReadComplete(); //returns ADC value when complete.
+	void DiffPinSelect(uint8_t pos,uint8_t neg, uint8_t gain = X1); //Differential ADC <---- TO DO
+	void adcStart(); //start AD conversion
+	int16_t adcComplete(); //returns ADC value when complete.
 	void EnableADCIntr(void (*isr)(), uint8_t trigger_source = Free_Running);  //ADC interrupt handler
-	void EnableAnalogCompIntr(void (*isr)(), uint8_t pos_input=AIN,uint8_t neg_input=AIN, uint8_t Intr_mode=RISING);  //Analog Comparator handler
 	void DisableADCIntr(); //disable ADC interrupt
-	void DisableAnalogCompIntr(); //disable Analog Comparator
+	void EnableAnalogCompIntr(void (*isr)(), uint8_t pos_input=AIN,uint8_t neg_input=AIN, uint8_t Intr_mode=RISING);  //Analog Comparator handler <-- TO DO
+	void DisableAnalogCompIntr(); //disable Analog Comparator <-- TO DO
 	void (*isrCallback)();
 		
   private:
 	static uint8_t analog_reference;
 	
+
 	uint8_t getpin(uint8_t pin1); //return MUX2:0 for selected adc pin 
 };
 
