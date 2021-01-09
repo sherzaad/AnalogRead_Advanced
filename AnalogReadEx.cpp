@@ -6,7 +6,8 @@
 AnalogReadEx Analog;              // preinstatiate
 
 static uint8_t AnalogReadEx::analog_reference = DEFAULT;
-static volatile uint16_t AnalogReadEx::adc_intr_rd = 0;
+static volatile uint16_t AnalogReadEx::adcIntr_val = 0;
+static uint8_t *AnalogReadEx::adc = (uint8_t*)&adcIntr_val; //not need for 'volatile' as only used by ISR
 
 void AnalogReadEx::SetReference(uint8_t mode)
 {
@@ -68,7 +69,7 @@ void AnalogReadEx::PinSelect(uint8_t pin)
 #endif
 }
 
-void AnalogReadEx::ReadStart()
+void AnalogReadEx::adcStart()
 {
 #if defined(ADCSRA) && defined(ADCL)
 	// start the conversion
@@ -80,7 +81,7 @@ void AnalogReadEx::ReadStart()
 
 void AnalogReadEx::DiffPinSelect(uint8_t pos,uint8_t neg, uint8_t gain)
 {
-	uint8_t _pos = getpin(pos);
+/* 	uint8_t _pos = getpin(pos);
 	uint8_t _neg = getpin(neg);
 	uint8_t mux;
 
@@ -124,24 +125,19 @@ void AnalogReadEx::DiffPinSelect(uint8_t pos,uint8_t neg, uint8_t gain)
 #else
 #error "library does not support hardware!"
 #endif
-#endif
+#endif */
 }
 
-int16_t AnalogReadEx::ReadComplete()
+int16_t AnalogReadEx::adcComplete()
 {
 #if defined(ADCSRA) && defined(ADCL)
-uint16_t val=0; 
-
 	// ADSC is cleared when the conversion finishes
 	if (ADCSRA & (1<<ADSC)) return ADC_BUSY;
-
-	// we have to read ADCL first; doing so locks both ADCL
-	// and ADCH until ADCH is read.  reading ADCL second would
-	// cause the results of each conversion to be discarded,
-	// as ADCL and ADCH would be locked when it completed.
-	val = ADCL | (ADCH << 8);
 	
-	return val;
+	*adc = ADCL;  //Make certain to read ADCL first, it locks the values
+	*(adc+1) = ADCH;  //and ADCH releases them.
+	
+	return adcIntr_val;
 #else
 	#error "library does not support hardware!"
 #endif
@@ -175,7 +171,7 @@ void AnalogReadEx::DisableADCIntr()
 
 void AnalogReadEx::EnableAnalogCompIntr(void (*isr)(), uint8_t pos_input,uint8_t neg_input, uint8_t Intr_mode)
 {
-	//choose the input for non-inverting input
+/* 	//choose the input for non-inverting input
     if (pos_input == INTERNAL) {
         ACSR |= (1<<ACBG); //set +ve comaparator input to bandgap internal reference voltage
     } 
@@ -216,27 +212,30 @@ void AnalogReadEx::EnableAnalogCompIntr(void (*isr)(), uint8_t pos_input,uint8_t
 	
 	ACSR &= ~(1<<ACD); //switch on the AC
 	
-	sei();
+	sei(); */
 }
 
 void AnalogReadEx::DisableAnalogCompIntr()
 {
-	ACSR &= ~(1<<ACIE); //disable interrupts on AC events
-	ACSR |= (1<<ACD); //switch off the AC
+/* 	ACSR &= ~(1<<ACIE); //disable interrupts on AC events
+	ACSR |= (1<<ACD); //switch off the AC */
 }
 
 // Interrupt service routine for the ADC
 ISR(ADC_vect)
 {
 #if defined(ADCL) 
-  // Must read low first
-  Analog.adc_intr_rd = ADCL | (ADCH << 8);
+  Analog.adc[0] = ADCL;        //Make certain to read ADCL first, it locks the values
+  Analog.adc[1] = ADCH;  //and ADCH releases them.
   Analog.isrCallback();
 #endif
 }
 
+#ifdef ANALOG_COMP_vect
 ISR(ANALOG_COMP_vect) {
-//ISR(ANA_COMP_vect) { //alternative name depending on board
+#else
+ISR(ANA_COMP_vect) { //alternative name depending on board
+#endif
 	Analog.isrCallback();
 }
 #endif
