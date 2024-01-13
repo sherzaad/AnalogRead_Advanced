@@ -136,6 +136,9 @@ int16_t AnalogReadEx::adcComplete()
 	
 	*adc = ADCL;  //Make certain to read ADCL first, it locks the values
 	*(adc+1) = ADCH;  //and ADCH releases them.
+
+	//uint16_t *temp_ptr;
+	//temp_ptr = (uint16_t*)&ADCL; 
 	
 	return adcIntr_val;
 #else
